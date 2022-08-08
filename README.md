@@ -1,18 +1,12 @@
 # btoandav20 toufu
 
 # Support for Config and run on Oanda-V20 API in backtrader
+
 ```bash
-python examples/oandav20test/oandav20test.py --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --fromdate 2015-01-01 --timeframe Minutes --compression 240
-python examples/oandav20test/oandav20test_2.py --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --fromdate 2015-01-01 --todate 2020-11-17 --timeframe Minutes --compression 240
-python examples/oandav20test/oandav20test_2.py --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --fromdate 2015-01-01 --todate 2020-11-17 --timeframe Days --compression 1
-python examples/oandav20test/oandav20test_2.py --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --fromdate 2015-01-01 --todate 2020-11-17 --timeframe Weeks --compression 1
-
-python examples/oandav20test/oandav20test_2.py --exactbars 0 --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --fromdate 2015-01-01 --todate 2020-11-17 --timeframe Minutes --compression 240 --exectype Historical --plot
-python examples/oandav20test/oandav20test_2.py --exactbars 0 --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 ./datas/GBP_USD_20150101_201711174H.txt --plot
-python examples/oandav20test/oandav20test_2.py --exactbars 0 --token e2b27a0cdef2527270c4df188610ddcf-68595897b819bb4d7f4e4ae32dbb1ef8 --account 101-003-12870587-001 --data0 GBP_USD --data1 GBP_USD --data2 GBP_USD --fromdate 2015-01-01 --todate 2020-11-15 --exectype Historical --plot
+cd examples
+# fill in oanda token id and account id for live and demo
+python oandav20test.py
 ```
-
-Support for Oanda-V20 API in backtrader
 
 **This  integration is still under development and may have some issues, use it for live trading at your own risk!**
 

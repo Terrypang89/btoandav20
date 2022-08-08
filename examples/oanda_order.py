@@ -132,9 +132,9 @@ with open("config.json", "r") as file:
     config = json.load(file)
 
 storekwargs = dict(
-    token=config["oanda"]["token"],
-    account=config["oanda"]["account"],
-    practice=config["oanda"]["practice"],
+    token=config["oanda_live"]["token"],
+    account=config["oanda_live"]["account"],
+    practice=config["oanda_live"]["practice"],
     notif_transactions=True,
     stream_timeout=10,
 )

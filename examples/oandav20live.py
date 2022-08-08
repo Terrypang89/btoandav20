@@ -5,10 +5,11 @@ from __future__ import (absolute_import, division, print_function,
 
 import argparse
 import datetime
+import json
+from pprint import pprint
 
 import backtrader as bt
 from backtrader.utils import flushfile  # win32 quick stdout flushing
-
 import btoandav20
 
 StoreCls = btoandav20.stores.OandaV20Store
@@ -22,7 +23,9 @@ TIMEFRAMES = [bt.TimeFrame.Names[bt.TimeFrame.Seconds],
          bt.TimeFrame.Names[bt.TimeFrame.Weeks],
          bt.TimeFrame.Names[bt.TimeFrame.Months]]
 
+
 class TestStrategy(bt.Strategy):
+
     params = dict(
         smaperiod=5,
         trade=False,
@@ -44,6 +47,7 @@ class TestStrategy(bt.Strategy):
         self.counttostop = 0
         self.datastatus = 0
 
+        print("smaperiod = %s" %(self.p.smaperiod))
         # Create SMA on 2nd data
         self.sma = bt.indicators.MovAv.SMA(self.data, period=self.p.smaperiod)
 
@@ -52,24 +56,24 @@ class TestStrategy(bt.Strategy):
         print('--------------------------------------------------')
 
     def notify_data(self, data, status, *args, **kwargs):
-        print('*' * 5, 'DATA NOTIF:', data._getstatusname(status), *args)
+        print('*' * 5, 'DATA NOTIF notify_data:', data._getstatusname(status), *args)
         if status == data.LIVE:
             self.counttostop = self.p.stopafter
             self.datastatus = 1
 
     def notify_store(self, msg, *args, **kwargs):
-        print('*' * 5, 'STORE NOTIF:', msg)
+        print('*' * 5, 'STORE NOTIF notify_store:', msg)
 
     def notify_order(self, order):
         if order.status in [order.Completed, order.Cancelled, order.Rejected]:
             self.order = None
 
-        print('-' * 50, 'ORDER BEGIN', datetime.datetime.now())
+        print('-' * 50, 'ORDER BEGIN notify_order', datetime.datetime.now())
         print(order)
         print('-' * 50, 'ORDER END')
 
     def notify_trade(self, trade):
-        print('-' * 50, 'TRADE BEGIN', datetime.datetime.now())
+        print('-' * 50, 'TRADE BEGIN notify_trade', datetime.datetime.now())
         print(trade)
         print('-' * 50, 'TRADE END')
 
@@ -77,6 +81,7 @@ class TestStrategy(bt.Strategy):
         self.next(frompre=True)
 
     def next(self, frompre=False):
+
         txt = list()
         txt.append('Data0')
         txt.append('%04d' % len(self.data0))
@@ -176,104 +181,133 @@ class TestStrategy(bt.Strategy):
 
         self.done = False
 
-
 def runstrategy():
     args = parse_args()
 
     # Create a cerebro
     cerebro = bt.Cerebro()
 
+    with open("config.json", "r") as file:
+        config = json.load(file)
+
+    for attr, value in config.items():
+        if value is None or value == "None" or value == "":
+            config[f"{attr}"] = None
+        print(attr, '=', value)
+
+    # select demo or live
+    trade_status = "oanda_demo" if config["practice"] else "oanda_live"
+
+    print("trade_status = %s" %(trade_status))
     storekwargs = dict(
-        token=args.token,
-        account=args.account,
-        practice=not args.live
+        token=config[f"{trade_status}"]["token"],
+        account=config[f"{trade_status}"]["account"],
+        practice=config["practice"],
+        notif_transactions=True,
+        stream_timeout=10,
     )
 
-    if not args.no_store:
+    # get the store from oanda
+    if not config["no_store"]:
         store = StoreCls(**storekwargs)
 
-    if args.broker:
-        if args.no_store:
+    # setting broker based on storekwargs if no store, else use the broker
+    if config["broker"]:
+        if config["no_store"]:
             broker = BrokerCls(**storekwargs)
         else:
             broker = store.getbroker()
 
         cerebro.setbroker(broker)
 
-    timeframe = bt.TimeFrame.TFrame(args.timeframe)
-    # Manage data1 parameters
-    tf1 = args.timeframe1
-    tf1 = bt.TimeFrame.TFrame(tf1) if tf1 is not None else timeframe
-    cp1 = args.compression1
-    cp1 = cp1 if cp1 is not None else args.compression
+    if config["timeframe"] is None:
+        config["timeframe"] = "Minutes"
 
-    if args.resample or args.replay:
+    timeframe = bt.TimeFrame.TFrame(config["timeframe"])
+
+    tf1 = config["timeframe1"]
+    tf1 = bt.TimeFrame.TFrame(tf1) if tf1 is not None else timeframe
+
+    cp1 = config["compression1"]
+    cp1 = cp1 if cp1 is not None else config["compression"]
+
+    if config["resample"] or config["replay"]:
         datatf = datatf1 = bt.TimeFrame.Ticks
         datacomp = datacomp1 = 1
     else:
         datatf = timeframe
-        datacomp = args.compression
+        datacomp = config["compression"]
         datatf1 = tf1
         datacomp1 = cp1
 
     fromdate = None
-    if args.fromdate:
-        dtformat = '%Y-%m-%d' + ('T%H:%M:%S' * ('T' in args.fromdate))
-        fromdate = datetime.datetime.strptime(args.fromdate, dtformat)
+    if config["fromdate"] and not config["fromdate"] is None:
+        dtformat = '%Y-%m-%d' + ('T%H:%M:%S' * ('T' in config["fromdate"]))
+        fromdate = datetime.datetime.strptime(config["fromdate"], dtformat)
 
-    todate = None
-    if args.todate:
-        dtformat = '%Y-%m-%d' + ('T%H:%M:%S' * ('T' in args.todate))
-        todate = datetime.datetime.strptime(args.todate, dtformat)
+    if config["todate"] is None:
+        yesterday = datetime.datetime.now() - datetime.timedelta(3)
+        dtformat = '%Y-%m-%d' + ('T%H:%M:%S' * ('T' in yesterday))
+        todate = datetime.datetime.strptime(yesterday, dtformat)
+    else:
+        dtformat = '%Y-%m-%d' + ('T%H:%M:%S' * ('T' in config["todate"]))
+        todate = datetime.datetime.strptime(config["todate"], dtformat)
 
-    DataFactory = DataCls if args.no_store else store.getdata
+    print("fromdate = %s to todate = %s" %(fromdate, todate))
+
+    # request data from the oanda if no store else direct get from store
+    DataFactory = DataCls if config["no_store"] else store.getdata
 
     datakwargs = dict(
-        timeframe=datatf, compression=datacomp,
-        qcheck=args.qcheck,
-        historical=args.historical,
+        timeframe=datatf, 
+        compression=datacomp,
+        qcheck=config["qcheck"],
+        historical=config["historical"],
         fromdate=fromdate,
         todate=todate,
-        bidask=args.bidask,
-        useask=args.useask,
-        backfill_start=not args.no_backfill_start,
-        backfill=not args.no_backfill,
-        tz=args.timezone
+        bidask=config["bidask"],
+        useask=config["useask"],
+        backfill_start=not config["no_backfill_start"],
+        backfill=not config["no_backfill"],
+        tz=config["tz"],
+        data0=config["pairlists"][0],
+        exactbars=config["exactbars"]
     )
 
-    if args.no_store and not args.broker:   # neither store nor broker
+    if config["no_store"] and not config["broker"]:   # neither store nor broker
         datakwargs.update(storekwargs)  # pass the store args over the data
 
-    data0 = DataFactory(dataname=args.data0, **datakwargs)
+    print(datakwargs)
+
+    data0 = DataFactory(dataname=datakwargs["data0"], **datakwargs)
 
     data1 = None
-    if args.data1 is not None:
-        if args.data1 != args.data0:
+    if config["data1"] is not None:
+        if config["data1"] != config["data0"]:
             datakwargs['timeframe'] = datatf1
             datakwargs['compression'] = datacomp1
-            data1 = DataFactory(dataname=args.data1, **datakwargs)
+            data1 = DataFactory(dataname=config["data1"], **datakwargs)
         else:
             data1 = data0
 
     rekwargs = dict(
-        timeframe=timeframe, compression=args.compression,
-        bar2edge=not args.no_bar2edge,
-        adjbartime=not args.no_adjbartime,
-        rightedge=not args.no_rightedge,
-        takelate=not args.no_takelate,
+        timeframe=timeframe, 
+        compression=config["compression"],
+        bar2edge=not config["no_bar2edge"],
+        adjbartime=not config["no_adjbartime"],
+        rightedge=not config["no_rightedge"],
+        takelate=not config["no_takelate"],
     )
 
-    if args.replay:
+    if config["replay"]:
         cerebro.replaydata(data0, **rekwargs)
-
         if data1 is not None:
             rekwargs['timeframe'] = tf1
             rekwargs['compression'] = cp1
             cerebro.replaydata(data1, **rekwargs)
 
-    elif args.resample:
+    elif config["resample"]:
         cerebro.resampledata(data0, **rekwargs)
-
         if data1 is not None:
             rekwargs['timeframe'] = tf1
             rekwargs['compression'] = cp1
@@ -284,33 +318,37 @@ def runstrategy():
         if data1 is not None:
             cerebro.adddata(data1)
 
-    if args.valid is None:
-        valid = None
-    else:
-        valid = datetime.timedelta(seconds=args.valid)
+    
+    valid = None
+    if config["valid"]:
+        valid = datetime.timedelta(seconds=config["valid"])
+
     # Add the strategy
     cerebro.addstrategy(TestStrategy,
-                        smaperiod=args.smaperiod,
-                        trade=args.trade,
-                        exectype=bt.Order.ExecType(args.exectype),
-                        stake=args.stake,
-                        stopafter=args.stopafter,
+                        smaperiod=config["smaperiod"],
+                        trade=config["trade"],
+                        exectype=bt.Order.ExecType(config["exectype"]),
+                        stake=config["stake"],
+                        stopafter=config["stopafter"],
                         valid=valid,
-                        cancel=args.cancel,
-                        donotcounter=args.donotcounter,
-                        sell=args.sell,
-                        usebracket=args.usebracket)
+                        cancel=config["cancel"],
+                        donotcounter=config["donotcounter"],
+                        sell=config["sell"],
+                        usebracket=config["usebracket"])
 
     # Live data ... avoid long data accumulation by switching to "exactbars"
-    cerebro.run(exactbars=args.exactbars)
-    if args.exactbars < 1:  # plotting is possible
-        if args.plot:
+    cerebro.run(exactbars=datakwargs["exactbars"])
+    if datakwargs["exactbars"] < 1:  # plotting is possible
+        if config["plot"]:
             pkwargs = dict(style='line')
-            if args.plot is not True:  # evals to True but is not True
-                npkwargs = eval('dict(' + args.plot + ')')  # args were passed
+            if config["plot"] is not True:  # evals to True but is not True
+                npkwargs = eval('dict(' + config["plot"] + ')')  # args were passed
                 pkwargs.update(npkwargs)
 
+            print("***** ploting in progress ***** ")
             cerebro.plot(**pkwargs)
+    elif config["plot"] and datakwargs["exactbars"] < 1:
+        print("WARNING: please set exactbars lower than 1 for plotting")
 
 
 def parse_args(pargs=None):
@@ -335,11 +373,11 @@ def parse_args(pargs=None):
                         help='Display all info received from source')
 
     parser.add_argument('--token', default=None,
-                        required=True, action='store',
+                        required=False, action='store',
                         help='Access token to use')
 
     parser.add_argument('--account', default=None,
-                        required=True, action='store',
+                        required=False, action='store',
                         help='Account identifier to use')
 
     parser.add_argument('--live', default=None,
@@ -352,7 +390,7 @@ def parse_args(pargs=None):
                               'notification/resampling/replaying check'))
 
     parser.add_argument('--data0', default=None,
-                        required=True, action='store',
+                        required=False, action='store',
                         help='data 0 into the system')
 
     parser.add_argument('--data1', default=None,
@@ -386,11 +424,6 @@ def parse_args(pargs=None):
     parser.add_argument('--fromdate',
                         required=False, action='store',
                         help=('Starting date for historical download '
-                              'with format: YYYY-MM-DD[THH:MM:SS]'))
-
-    parser.add_argument('--todate',
-                        required=False, action='store',
-                        help=('ending date for historical download '
                               'with format: YYYY-MM-DD[THH:MM:SS]'))
 
     parser.add_argument('--smaperiod', default=5, type=int,

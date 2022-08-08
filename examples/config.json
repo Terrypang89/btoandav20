@@ -1,7 +1,58 @@
 {
-    "oanda": {
-        "token": "",
-        "account": "",
+    "oanda_live": {
+        "token": "<insert live account token>",
+        "account": "<insert live account id>",
         "practice": false
-    }
+    },
+    "oanda_demo": {
+        "token": "<insert demo account token>",
+        "account": "<insert demo account id>",
+        "practice": true
+    },
+    "practice": true,
+    "exactbars": 0,
+    "timeframe": "Minutes",
+    "timeframe1": "None",
+    "compression": 60,
+    "compression1": 1,
+    "qcheck": 0.5,
+    "historical": false,
+    "fromdate": "2022-01-14",
+    "todate": "2022-07-07",
+    "bidask": "None",
+    "useask": "None",
+    "no_backfill_start": false,
+    "no_backfill": false,
+    "tz": "None",
+    "data0": "GBP_USD",
+    "data1": "None",
+    "no_bar2edge": false,
+    "no_adjbartime": false,
+    "no_rightedge": false,
+    "no_takelate": false,
+    "smaperiod": 5,
+    "trade": false,
+    "stake": 10,
+    "exectype": "Historical",
+    "stopafter": 0,
+    "valid": "None",
+    "cancel": 0,
+    "donotcounter": false,
+    "sell": false,
+    "usebracket": false,
+    "no_store": false,
+    "debug": false,
+    "resample": false,
+    "replay": false,
+    "broker": false,
+    "plot": true,
+    "pairlists" : [
+        "GBP_USD", "EUR_USD", "JPY_USD"
+    ],
+    "multi_timeframes": [
+        "Ticks", "Seconds", "Minutes", "Days", "Weeks", "Months", "Years"
+    ],
+    "multi_compressions": [
+        "1", "15", "30", "60", "180", "240"
+    ]
 }

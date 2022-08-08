@@ -19,6 +19,8 @@ class St(bt.Strategy):
         }
 
     def notify_store(self, msg, *args, **kwargs):
+        print("msg:")
+        print(msg[clientExtensions])
         if "clientExtensions" in msg:
             o_info = json.loads(msg["clientExtensions"]["comment"])
             buytrigger = o_info["buytrigger"]
@@ -38,9 +40,9 @@ with open("config.json", "r") as file:
     config = json.load(file)
 
 storekwargs = dict(
-    token=config["oanda"]["token"],
-    account=config["oanda"]["account"],
-    practice=config["oanda"]["practice"],
+    token=config["oanda_live"]["token"],
+    account=config["oanda_live"]["account"],
+    practice=config["oanda_live"]["practice"],
     notif_transactions=True,
     stream_timeout=10,
 )
