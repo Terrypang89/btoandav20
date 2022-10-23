@@ -3,8 +3,10 @@
 # Support for Config and run on Oanda-V20 API in backtrader
 
 ```bash
+git clone https://github.com/Terrypang89/btoandav20.git
+git checkout toufu_master
 cd examples
-# fill in oanda token id and account id for live and demo
+# Edit config.json, fill in oanda token id and account id for live and demo
 python oandav20test.py
 ```
 
@@ -88,14 +90,15 @@ Create new trailing stop for parent order
 * ``Backtrader`` (tested with version 1.9.61.122)
 * ``pyyaml`` (tested with version 3.13)
 * ``v20`` (tested with version 3.0.25) (<https://github.com/oanda/v20-python/releases>)
+**V20 need to change to latest development project: (<https://github.com/hootnot/oanda-api-v20>)**
 
 ## Installation
 
 The following steps have been tested on Mac OS High Sierra and Ubuntu 16 and 18.
 
 1. Install backtrader ``pip install backtrader[plotting]`` (<https://www.backtrader.com/docu/installation.html>)
-2. Install btoandav20 ``pip install git+https://github.com/happydasch/btoandav20``
-   or with ``pipenv install git+https://github.com/happydasch/btoandav20#egg=btoandav20``
+2. Install btoandav20 ``pip install git+https://github.com/Terrypang89/btoandav20/tree/toufu_master``
+   or with ``pipenv install git+https://github.com/Terrypang89/btoandav20/tree/toufu_master#egg=btoandav20``
 
 3. Import ``btoandav20`` into your script: ``import btoandav20`` (this is considering your script is at the root of your folder)
 
