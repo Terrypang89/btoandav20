@@ -1,11 +1,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import backtrader as bt
-from .. import Observer
+# from .. import Observer
 import pprint
 import datetime
 
-class TDSequentialObs(Observer):
+class TDSequentialObs(bt.Observer):
 
     plotinfo = dict(plot=True,
                     subplot=False,

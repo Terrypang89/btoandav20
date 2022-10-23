@@ -23,8 +23,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import backtrader as bt
-from backtrader.observers import *
-from backtrader.indicators import *
+from btoandav20.observers import *
+from btoandav20.indicators import *
 
 class StrategyTDSequential(bt.Strategy):
 

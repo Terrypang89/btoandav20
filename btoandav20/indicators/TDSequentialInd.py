@@ -22,10 +22,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import backtrader as bt
-from . import Indicator, MovAv
-from backtrader.utils import *
+# from . import Indicator, MovAv
+from btoandav20.utils import *
 
-class TDSequentialInd(Indicator):
+class TDSequentialInd(bt.Indicator):
 
     '''
     TD Sequential
