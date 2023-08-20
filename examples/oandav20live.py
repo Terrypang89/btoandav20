@@ -14,7 +14,7 @@ import btoandav20
 
 StoreCls = btoandav20.stores.OandaV20Store
 DataCls = btoandav20.feeds.OandaV20Data
-# BrokerCls = btoandav20.brokers.OandaV20Broker
+BrokerCls = btoandav20.brokers.OandaV20Broker
 
 # available timeframes for oanda
 TIMEFRAMES = [bt.TimeFrame.Names[bt.TimeFrame.Seconds],
