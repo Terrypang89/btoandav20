@@ -5,8 +5,8 @@
         "practice": false
     },
     "oanda_demo": {
-        "token": "<insert demo account token>",
-        "account": "<insert demo account id>",
+        "token": "3999f2e5dae3260d1df3f44ef3f7b4f7-7350c2f425de97f29cb8209e2c08837a",
+        "account": "101-003-12870587-001",
         "practice": true
     },
     "practice": true,
@@ -18,7 +18,7 @@
     "qcheck": 0.5,
     "historical": false,
     "fromdate": "2022-01-14",
-    "todate": "2022-07-07",
+    "todate": "2023-07-07",
     "bidask": "None",
     "useask": "None",
     "no_backfill_start": false,
