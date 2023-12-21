@@ -134,22 +134,22 @@ with open("config.json", "r") as file:
 storekwargs = dict(
     token=config["oanda_live"]["token"],
     account=config["oanda_live"]["account"],
-    practice=config["oanda_live"]["practice"],
+    practice=True,
     notif_transactions=True,
     stream_timeout=10,
 )
 store = bto.stores.OandaV20Store(**storekwargs)
 datakwargs = dict(
-    timeframe=bt.TimeFrame.Seconds,
-    compression=30,
+    timeframe=bt.TimeFrame.Minutes,
+    compression=1,
     tz='Europe/Berlin',
     backfill=False,
     backfill_start=False,
 )
-data = store.getdata(dataname="EUR_USD", **datakwargs)
-data.resample(
-    timeframe=bt.TimeFrame.Seconds,
-    compression=30)  # rightedge=True, boundoff=1)
+data = store.getdata(dataname="XAU_USD", **datakwargs)
+# data.resample(
+#     timeframe=bt.TimeFrame.Seconds,
+#     compression=30)  # rightedge=True, boundoff=1)
 cerebro = bt.Cerebro()
 cerebro.adddata(data)
 cerebro.setbroker(store.getbroker())

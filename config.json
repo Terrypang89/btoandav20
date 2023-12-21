@@ -1,7 +1,7 @@
 {
     "oanda_live": {
-        "token": "<insert live account token>",
-        "account": "<insert live account id>",
+        "token": "13cda4a0bb3804133a14982c50a8267b-4738425227ccdbc1fcaf1390ed9131c4",
+        "account": "001-003-3373714-004",
         "practice": false
     },
     "oanda_demo": {
@@ -9,16 +9,16 @@
         "account": "101-003-12870587-001",
         "practice": true
     },
-    "practice": true,
+    "practice": false,
     "exactbars": 0,
     "timeframe": "Minutes",
     "timeframe1": "None",
-    "compression": 60,
+    "compression": 1,
     "compression1": 1,
     "qcheck": 0.5,
     "historical": false,
-    "fromdate": "2023-08-18",
-    "todate": "2023-08-20",
+    "fromdate": "2023-12-21",
+    "todate": "None",
     "bidask": "None",
     "useask": "None",
     "no_backfill_start": false,
@@ -41,18 +41,20 @@
     "sell": false,
     "usebracket": false,
     "no_store": false,
-    "debug": false,
+    "debug": true,
     "resample": false,
     "replay": false,
     "broker": false,
-    "plot": true,
+    "plot": false,
+    "host": "localhost",
+    "datatimeout": 10,
     "pairlists" : [
         "XAU_USD"
     ],
     "multi_timeframes": [
-        "Minutes"
+        "Ticks", "Seconds", "Minutes", "Days", "Weeks", "Months", "Years"
     ],
     "multi_compressions": [
-        "5"
+        "1", "15", "30", "60", "180", "240"
     ]
 }

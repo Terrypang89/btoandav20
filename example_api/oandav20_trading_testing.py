@@ -11,10 +11,21 @@ from pprint import pprint
 import backtrader as bt
 from backtrader.utils import flushfile  # win32 quick stdout flushing
 import btoandav20
+from flask import Flask, request
+from threading import Timer
+
+from src import api_server_start
+from src import event_subscribe, event_unsubscribe, event_post
+from src import StoppableThread
+from src import log , create_logger
 
 StoreCls = btoandav20.stores.OandaV20Store
 DataCls = btoandav20.feeds.OandaV20Data
 BrokerCls = btoandav20.brokers.OandaV20Broker
+
+TIMECALL = 60
+API_PORT = "api-port"
+API_REV = "api-rev"
 
 # available timeframes for oanda
 TIMEFRAMES = [bt.TimeFrame.Names[bt.TimeFrame.Seconds],
@@ -39,7 +50,71 @@ class TestStrategy(bt.Strategy):
         usebracket=False,
     )
 
+    def get_timestamp(self):
+        timestamp = time.strftime("%Y-%m-%d %X")
+        return timestamp
+
+    def process_data_received(self, data:dict):
+        log.info(f"on_data_received data = {data}\n")
+        if not isinstance(data, dict):
+            log.info(f"Incorrect data({data}) format received, SKIP.")
+            return None
+        try:
+            # check if data ticker is 5m, 30m, 1 day
+            self._new_data_received = True
+            self._api_data = data
+            
+            if data["Period"] == "1":
+                self._new_data_received_1m = True
+                self._api_data_1m = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            elif data["Period"] == "5":
+                self._new_data_received_5m = True
+                self._api_data_5m = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            elif data["Period"] == "15":
+                self._new_data_received_15m = True
+                self._api_data_15m = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            elif data["Period"] == "30":
+                self._new_data_received_30m = True
+                self._api_data_30m = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            elif data["Period"] == "60":
+                self._new_data_received_1h = True
+                self._api_data_1h = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            if data["Period"] == "D":
+                self._new_data_received_1d = True
+                self._api_data_1d = data
+                log.info(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # return data
+        except Exception as err:
+            log.error(f"Sent webhook failed, reason: {err}")
+        
+    def retrieve_data_received(self):
+        if self._new_data_received_5m == True:
+            self._new_data_received_5m = False
+            return self._api_data_5m
+        # elif 
+        return None
+
     def __init__(self):
+        self._new_data_received_1m = False
+        self._new_data_received_5m = False
+        self._new_data_received_15m = False
+        self._new_data_received_30m = False
+        self._new_data_received_1h = False
+        self._new_data_received_1d = False
+        self._api_data_1m = None
+        self._api_data_5m = None
+        self._api_data_15m = None
+        self._api_data_30m = None
+        self._api_data_1h = None
+        self._api_data_1d = None
+        # self._prev_api_data = ""
+        event_subscribe(API_REV, self.process_data_received)
+
         # To control operation entries
         self.orderid = list()
         self.order = None
@@ -82,6 +157,8 @@ class TestStrategy(bt.Strategy):
 
     def next(self, frompre=False):
 
+        updated_data = self.retrieve_data_received()
+        log.info(f"UPDATED data = {updated_data}")
         txt = list()
         txt.append('Data0')
         txt.append('%04d' % len(self.data0))
@@ -187,6 +264,10 @@ def runstrategy():
     # Create a cerebro
     cerebro = bt.Cerebro()
 
+    thread = StoppableThread(target=api_server_start, args=(API_PORT, API_REV))
+    thread.start()
+    thread.join() 
+
     with open("../config.json", "r") as file:
         config = json.load(file)
 
@@ -215,10 +296,11 @@ def runstrategy():
     if config["broker"]:
         if config["no_store"]:
             broker = BrokerCls(**storekwargs)
-        else:
-            broker = store.getbroker()
+    else:
+        broker = store.getbroker()
 
-        cerebro.setbroker(broker)
+    cerebro.setbroker(broker)
+        
 
     if config["timeframe"] is None:
         config["timeframe"] = "Minutes"
@@ -234,11 +316,13 @@ def runstrategy():
     if config["resample"] or config["replay"]:
         datatf = datatf1 = bt.TimeFrame.Ticks
         datacomp = datacomp1 = 1
+        print("running ticks......")
     else:
         datatf = timeframe
         datacomp = config["compression"]
         datatf1 = tf1
         datacomp1 = cp1
+        print(f"running compress......{datacomp}")
 
     fromdate = None
     if config["fromdate"] and not config["fromdate"] is None:
@@ -275,48 +359,66 @@ def runstrategy():
     )
 
     if config["no_store"] and not config["broker"]:   # neither store nor broker
+        print("datakwargs updating....")
         datakwargs.update(storekwargs)  # pass the store args over the data
 
     print(datakwargs)
 
-    data0 = DataFactory(dataname=datakwargs["data0"], **datakwargs)
+    # data0 = DataFactory(dataname=datakwargs["data0"], **datakwargs)
 
-    data1 = None
-    if config["data1"] is not None:
-        if config["data1"] != config["data0"]:
-            datakwargs['timeframe'] = datatf1
-            datakwargs['compression'] = datacomp1
-            data1 = DataFactory(dataname=config["data1"], **datakwargs)
-        else:
-            data1 = data0
+    # data1 = None
+    # if config["data1"] is not None:
+    #     if config["data1"] != config["data0"]:
+    #         datakwargs['timeframe'] = datatf1
+    #         datakwargs['compression'] = datacomp1
+    #         data1 = DataFactory(dataname=config["data1"], **datakwargs)
+    #     else:
+    #         data1 = data0
 
-    rekwargs = dict(
-        timeframe=timeframe, 
-        compression=config["compression"],
-        bar2edge=not config["no_bar2edge"],
-        adjbartime=not config["no_adjbartime"],
-        rightedge=not config["no_rightedge"],
-        takelate=not config["no_takelate"],
+    # rekwargs = dict(
+    #     timeframe=timeframe, 
+    #     compression=config["compression"],
+    #     bar2edge=not config["no_bar2edge"],
+    #     adjbartime=not config["no_adjbartime"],
+    #     rightedge=not config["no_rightedge"],
+    #     takelate=not config["no_takelate"],
+    # )
+
+    # if config["replay"]:
+    #     cerebro.replaydata(data0, **rekwargs)
+    #     print("replaydata.........")
+    #     if data1 is not None:
+    #         rekwargs['timeframe'] = tf1
+    #         rekwargs['compression'] = cp1
+    #         cerebro.replaydata(data1, **rekwargs)
+
+    # elif config["resample"]:
+    #     cerebro.resampledata(data0, **rekwargs)
+    #     print("resampledata.........")
+    #     if data1 is not None:
+    #         rekwargs['timeframe'] = tf1
+    #         rekwargs['compression'] = cp1
+    #         cerebro.resampledata(data1, **rekwargs)
+
+    # else:
+    datakwargs = dict(
+        # dataname="XAU_USD", 
+        timeframe=bt.TimeFrame.Minutes,
+        compression=1,
+        fromdate=fromdate, 
+        # backfill=False,
+        # backfill_start=False,
+        # historical=True,
+        # useask=True,
     )
-
-    if config["replay"]:
-        cerebro.replaydata(data0, **rekwargs)
-        if data1 is not None:
-            rekwargs['timeframe'] = tf1
-            rekwargs['compression'] = cp1
-            cerebro.replaydata(data1, **rekwargs)
-
-    elif config["resample"]:
-        cerebro.resampledata(data0, **rekwargs)
-        if data1 is not None:
-            rekwargs['timeframe'] = tf1
-            rekwargs['compression'] = cp1
-            cerebro.resampledata(data1, **rekwargs)
-
-    else:
-        cerebro.adddata(data0)
-        if data1 is not None:
-            cerebro.adddata(data1)
+    data = store.getdata(dataname="XAU_USD", **datakwargs)
+    # data.resample(
+    #     timeframe=bt.TimeFrame.Minutes,
+    #     compression=1)
+        # rightedge=True, boundoff=1)
+    cerebro.adddata(data)
+        # if data1 is not None:
+        #     cerebro.adddata(data1)
 
     
     valid = None
@@ -336,19 +438,21 @@ def runstrategy():
                         sell=config["sell"],
                         usebracket=config["usebracket"])
 
-    # Live data ... avoid long data accumulation by switching to "exactbars"
-    cerebro.run(exactbars=datakwargs["exactbars"])
-    if datakwargs["exactbars"] < 1:  # plotting is possible
-        if config["plot"]:
-            pkwargs = dict(style='line')
-            if config["plot"] is not True:  # evals to True but is not True
-                npkwargs = eval('dict(' + config["plot"] + ')')  # args were passed
-                pkwargs.update(npkwargs)
+    cerebro.run()
 
-            print("***** ploting in progress ***** ")
-            cerebro.plot(**pkwargs)
-    elif config["plot"] and datakwargs["exactbars"] < 1:
-        print("WARNING: please set exactbars lower than 1 for plotting")
+    # Live data ... avoid long data accumulation by switching to "exactbars"
+    # cerebro.run(exactbars=datakwargs["exactbars"])
+    # if datakwargs["exactbars"] < 1:  # plotting is possible
+    #     if config["plot"]:
+    #         pkwargs = dict(style='line')
+    #         if config["plot"] is not True:  # evals to True but is not True
+    #             npkwargs = eval('dict(' + config["plot"] + ')')  # args were passed
+    #             pkwargs.update(npkwargs)
+
+    #         print("***** ploting in progress ***** ")
+    #         cerebro.plot(**pkwargs)
+    # elif config["plot"] and datakwargs["exactbars"] < 1:
+    #     print("WARNING: please set exactbars lower than 1 for plotting")
 
 
 def parse_args(pargs=None):
