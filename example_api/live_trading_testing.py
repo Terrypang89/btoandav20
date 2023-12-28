@@ -37,6 +37,20 @@ API_PORT = "api-port"
 API_REV = "api-rev"
 
 class SmaCross(bt.SignalStrategy):
+
+    params = dict(
+        smaperiod=5,
+        trade=True,
+        stake=0.01,
+        exectype=bt.Order.Market,
+        stopafter=0,
+        valid=True,
+        cancel=0,
+        donotcounter=False,
+        sell=True,
+        usebracket=False,
+    )
+
     def get_timestamp(self):
         timestamp = time.strftime("%Y-%m-%d %X")
         return timestamp
@@ -80,13 +94,19 @@ class SmaCross(bt.SignalStrategy):
             log.error(f"Sent webhook failed, reason: {err}")
         
     def retrieve_data_received(self):
-        if self._new_data_received_5m is True:
-            self._new_data_received_5m = False
-            return self._api_data_5m
+        if self._new_data_received_15m is True:
+            self._new_data_received_15m = False
+            return self._api_data_15m
         # elif 
         return None
 
     def __init__(self):
+        self.orderid = list()
+        self.order = None
+
+        self.counttostop = 0
+        self.datastatus = 0
+
         self._new_data_received = False
         self._api_data = ""
         # self._prev_api_data = ""
@@ -125,9 +145,82 @@ class SmaCross(bt.SignalStrategy):
         txt.append('{:d}'.format(int(self.data.openinterest[0])))
         print(', '.join(txt))
 
-        for data in self.datas:
-            str_data = str(vars(data))
-            json_data = json.dumps(str_data, indent=12)
+        # if self.counttostop:  # stop after x live lines
+        #     self.counttostop -= 1
+        #     if not self.counttostop:
+        #         self.env.runstop()
+        #         return
+
+        if not self.p.trade:
+            return
+        
+        if not self.live_data:
+            return
+        
+        if self.updated_data is None:
+            return
+
+        if self.datastatus and not self.position and len(self.orderid) < 1:
+            if not self.p.usebracket:
+                if updated_data["Alert"] == "SUPER_BUY":
+                    # price = round(self.data0.close[0] * 0.90, 2)
+                    price = self.data0.close[0]
+                    self.order = self.buy(size=self.p.stake,
+                                          exectype=self.p.exectype,
+                                          price=price,
+                                          valid=self.p.valid)
+                elif updated_data["Alert"] == "SUPER_SELL":
+                    # price = round(self.data0.close[0] * 1.10, 4)
+                    price = self.data0.close[0]
+                    self.order = self.sell(size=self.p.stake,
+                                           exectype=self.p.exectype,
+                                           price=price,
+                                           valid=self.p.valid)
+
+            else:
+                if updated_data["Alert"] == "SUPER_BUY":
+                    print('USING BRACKET')
+                    price = self.data0.close[0]
+                    self.order, _, _ = self.buy_bracket(size=self.p.stake,
+                                                        exectype=bt.Order.Market,
+                                                        price=price,
+                                                        stopprice=price - 0.10,
+                                                        limitprice=price + 0.10,
+                                                        valid=self.p.valid)
+                elif updated_data["Alert"] == "SUPER_SELL":
+                    print('USING BRACKET')
+                    price = self.data0.close[0]
+                    self.order, _, _ = self.sell_bracket(size=self.p.stake,
+                                                        exectype=bt.Order.Market,
+                                                        price=price,
+                                                        stopprice=price - 0.10,
+                                                        limitprice=price + 0.10,
+                                                        valid=self.p.valid)
+
+            self.orderid.append(self.order)
+        # elif self.position and not self.p.donotcounter:
+        #     if self.order is None:
+        #         if updated_data["Alert"] == "SUPER_SELL":
+        #             self.order = self.sell(size=self.p.stake // 2,
+        #                                    exectype=bt.Order.Market,
+        #                                    price=self.data0.close[0])
+        #         elif updated_data["Alert"] == "SUPER_BUY":
+        #             self.order = self.buy(size=self.p.stake // 2,
+        #                                   exectype=bt.Order.Market,
+        #                                   price=self.data0.close[0])
+
+        #     self.orderid.append(self.order)
+
+        elif self.order is not None:
+            if updated_data["Alert"] == "SUPER_BUY" or updated_data["Alert"] == "SUPER_SELL":
+                self.cancel(self.order)
+
+        if self.datastatus:
+            self.datastatus += 1
+
+        # for data in self.datas:
+        #     str_data = str(vars(data))
+        #     json_data = json.dumps(str_data, indent=12)
             # print(f'id:{data._id} | tf:{data._timeframe} | com:{data._compression} | {data.datetime.datetime() - timedelta(hours=8)} - {data._name} | Cash {cash} | O: {data.open[0]} H: {data.high[0]} L: {data.low[0]} C: {data.close[0]} V:{data.volume[0]}')
 
     def notify_store(self, msg, *args, **kwargs):
@@ -153,6 +246,8 @@ class SmaCross(bt.SignalStrategy):
         print(str(dt) + dn + msg)
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
+            # self.counttostop = self.p.stopafter
+            self.datastatus = 1
         else:
             self.live_data = False
 

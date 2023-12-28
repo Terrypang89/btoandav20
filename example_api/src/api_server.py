@@ -15,7 +15,7 @@ import logging
 
 api_key = None
 event_id_receive = None
-START_PORT = 3002
+START_PORT = 3000
 
 app = Flask("API Server")
 # app.config["DEBUG"] = True
