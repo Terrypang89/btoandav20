@@ -1,11 +1,11 @@
 import backtrader as bt
 import backtrader.indicators as btind
 # import backtrader.indicators.MovAv as MovAv
-from backtradermql5.mt5store import MTraderStore
-from backtradermql5.mt5indicator import getMTraderIndicator
-from backtradermql5.mt5chart import MTraderChart, ChartIndicator
-from backtradermql5.mt5broker import MTraderBroker
-from backtradermql5.mt5data import MTraderData
+# from backtradermql5.mt5store import MTraderStore
+# from backtradermql5.mt5indicator import getMTraderIndicator
+# from backtradermql5.mt5chart import MTraderChart, ChartIndicator
+# from backtradermql5.mt5broker import MTraderBroker
+# from backtradermql5.mt5data import MTraderData
 from datetime import datetime, timedelta, timezone
 import time
 import json
@@ -65,38 +65,38 @@ class SmaCross(bt.SignalStrategy):
             self._new_data_received = True
             self._api_data = data
             
-            if data["Period"] == "1":
-                self._new_data_received_1m = True
-                self._api_data_1m = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            elif data["Period"] == "5":
-                self._new_data_received_5m = True
-                self._api_data_5m = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            elif data["Period"] == "15":
-                self._new_data_received_15m = True
-                self._api_data_15m = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            elif data["Period"] == "30":
-                self._new_data_received_30m = True
-                self._api_data_30m = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            elif data["Period"] == "60":
-                self._new_data_received_1h = True
-                self._api_data_1h = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            if data["Period"] == "D":
-                self._new_data_received_1d = True
-                self._api_data_1d = data
-                print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
-            # return data
+            # if data["Period"] == "1":
+            #     self._new_data_received_1m = True
+            #     self._api_data_1m = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # elif data["Period"] == "5":
+            #     self._new_data_received_5m = True
+            #     self._api_data_5m = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # elif data["Period"] == "15":
+            #     self._new_data_received_15m = True
+            #     self._api_data_15m = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # elif data["Period"] == "30":
+            #     self._new_data_received_30m = True
+            #     self._api_data_30m = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # elif data["Period"] == "60":
+            #     self._new_data_received_1h = True
+            #     self._api_data_1h = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            # if data["Period"] == "D":
+            #     self._new_data_received_1d = True
+            #     self._api_data_1d = data
+            #     print(f"Detected new data {data['Symbol']} - {data['Period']}\n")
+            return data
         except Exception as err:
             log.error(f"Sent webhook failed, reason: {err}")
         
     def retrieve_data_received(self):
-        if self._new_data_received_15m is True:
-            self._new_data_received_15m = False
-            return self._api_data_15m
+        if self._new_data_received is True:
+            self._new_data_received = False
+            return self._api_data
         # elif 
         return None
 
@@ -107,6 +107,7 @@ class SmaCross(bt.SignalStrategy):
         self.counttostop = 0
         self.datastatus = 0
 
+        
         self._new_data_received = False
         self._api_data = ""
         # self._prev_api_data = ""
