@@ -41,7 +41,7 @@ class SmaCross(bt.SignalStrategy):
     params = dict(
         smaperiod=5,
         trade=True,
-        stake=0.01,
+        stake=0.1,
         exectype=bt.Order.Market,
         stopafter=0,
         valid=True,
@@ -120,10 +120,6 @@ class SmaCross(bt.SignalStrategy):
         self.sell_one = False
 
     def next(self):
-
-        updated_data = self.retrieve_data_received()
-        log.info(f"UPDATED data = {updated_data}")
-
         # extract the data, check is there any opentrade, check buy/sell if yes, 
         txt = list()
         if self.live_data:
@@ -158,14 +154,20 @@ class SmaCross(bt.SignalStrategy):
         if not self.live_data:
             return
         
-        if self.updated_data is None:
+        updated_data = self.retrieve_data_received()
+        if updated_data is None:
             return
+        
+        print(f"UPDATED data = {updated_data}")
+        print(f"PRECHECK datastatus = {self.datastatus}, position = {self.position}, orderid = {self.orderid}, order = {self.order}, usebracket = {self.usebracket}, donorcounter = {self.p.donorcounter}, valid = {self.p.valid}, stake = {self.p.stake}, exectype={self.p.exectype}")
 
         if self.datastatus and not self.position and len(self.orderid) < 1:
             if not self.p.usebracket:
+                print('USING WITHOUT BRACKET')
                 if updated_data["Alert"] == "SUPER_BUY":
                     # price = round(self.data0.close[0] * 0.90, 2)
                     price = self.data0.close[0]
+                    print(f"BUY ACTION on price {price}")
                     self.order = self.buy(size=self.p.stake,
                                           exectype=self.p.exectype,
                                           price=price,
@@ -173,6 +175,7 @@ class SmaCross(bt.SignalStrategy):
                 elif updated_data["Alert"] == "SUPER_SELL":
                     # price = round(self.data0.close[0] * 1.10, 4)
                     price = self.data0.close[0]
+                    print(f"SELL ACTION on price {price}")
                     self.order = self.sell(size=self.p.stake,
                                            exectype=self.p.exectype,
                                            price=price,
@@ -180,8 +183,9 @@ class SmaCross(bt.SignalStrategy):
 
             else:
                 if updated_data["Alert"] == "SUPER_BUY":
-                    print('USING BRACKET')
+                    
                     price = self.data0.close[0]
+                    print(f'USING BUY BRACKET with price {price}, stopprice {price - 0.10}, limit price {price + 0.10}')
                     self.order, _, _ = self.buy_bracket(size=self.p.stake,
                                                         exectype=bt.Order.Market,
                                                         price=price,
@@ -189,30 +193,31 @@ class SmaCross(bt.SignalStrategy):
                                                         limitprice=price + 0.10,
                                                         valid=self.p.valid)
                 elif updated_data["Alert"] == "SUPER_SELL":
-                    print('USING BRACKET')
+                    print(f'USING SELL BRACKET with price {price}, stopprice {price - 0.10}, limit price {price + 0.10}')
                     price = self.data0.close[0]
                     self.order, _, _ = self.sell_bracket(size=self.p.stake,
                                                         exectype=bt.Order.Market,
                                                         price=price,
-                                                        stopprice=price - 0.10,
-                                                        limitprice=price + 0.10,
+                                                        stopprice=price + 0.10,
+                                                        limitprice=price - 0.10,
                                                         valid=self.p.valid)
 
             self.orderid.append(self.order)
-        # elif self.position and not self.p.donotcounter:
-        #     if self.order is None:
-        #         if updated_data["Alert"] == "SUPER_SELL":
-        #             self.order = self.sell(size=self.p.stake // 2,
-        #                                    exectype=bt.Order.Market,
-        #                                    price=self.data0.close[0])
-        #         elif updated_data["Alert"] == "SUPER_BUY":
-        #             self.order = self.buy(size=self.p.stake // 2,
-        #                                   exectype=bt.Order.Market,
-        #                                   price=self.data0.close[0])
+        elif self.position and not self.p.donotcounter:
+            if self.order is None:
+                if updated_data["Alert"] == "SUPER_SELL":
+                    self.order = self.sell(size=self.p.stake // 2,
+                                           exectype=bt.Order.Market,
+                                           price=self.data0.close[0])
+                elif updated_data["Alert"] == "SUPER_BUY":
+                    self.order = self.buy(size=self.p.stake // 2,
+                                          exectype=bt.Order.Market,
+                                          price=self.data0.close[0])
 
-        #     self.orderid.append(self.order)
+            self.orderid.append(self.order)
 
         elif self.order is not None:
+            print(f"CANCELING order {self.order}")
             if updated_data["Alert"] == "SUPER_BUY" or updated_data["Alert"] == "SUPER_SELL":
                 self.cancel(self.order)
 
